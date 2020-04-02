@@ -1,8 +1,18 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import requester from "./requester";
+  import { getRadomItem } from "./utils";
 
   const NUMBER_OF_PKMN = 807;
+
+  const quotes = [
+    "Strong Pkmn. Weak Pkmn. That is only the selfish perception of people. Truly skilled Trainers should try to win with the Pkmn they love best.",
+    'Whenever I’m feeling down after losing a battle, I think, "at least I’ve still got my shorts!"',
+    "There are bad ways to win, and good ways to lose. What’s interesting and troubling is that it’s not always clear which is which. A flipped coin doesn’t always land on heads or tails. Sometimes it may never land at all.",
+    "You said you have a dream… That dream… Make it come true! Make your wonderful dream a reality, and it will become your truth! If anyone can, it’s you! Well, then… Farewell!",
+    "Getting wrapped up in worries is bad for your body and spirit. That’s when you must short out your logic circuits and reboot your heart.",
+    "I heard that he’ll do whatever it takes to get rare Pkmn. He’s not above doing all sorts of things, I’ve heard."
+  ];
 
   const shuffle = array => {
     const a = [...array];
@@ -15,8 +25,16 @@
 
   const duplicateAndRandomize = array =>
     shuffle([
-      ...shuffle(array).map(item => ({ ...item, img: item.img[0] })),
-      ...shuffle(array).map(item => ({ ...item, img: item.img[1] }))
+      ...shuffle(array).map(item => ({
+        ...item,
+        img: item.imgs.shiny || item.imgs.common,
+        shiny: !!item.imgs.shiny
+      })),
+      ...shuffle(array).map(item => ({
+        ...item,
+        img: item.imgs.common,
+        shiny: false
+      }))
     ]);
 
   const delay = async ms =>
@@ -33,25 +51,50 @@
   };
 
   const getPkmnNumbers = () => {
-    const n = +prompt("How many pairs do you want?");
+    const n = +prompt("How many pairs do you want? (min 2, max 20)");
     return shuffle(
       Array.from(Array(NUMBER_OF_PKMN).keys(), (_, i) => i + 1)
-    ).slice(0, n);
+    ).slice(0, Math.max(2, Math.min(n, 20)));
   };
 
+  let pkmns = {};
   let cards = [];
   let actives = [];
   let hasStarted = false;
   let hasFinished = false;
   let cardTurns = 0;
+  let action_sentence = "Looking for pkmn in the tall glass...";
+  let pkdex_text = "";
 
-  const turn = async item => {
+  $: isActive = i => actives.find(card => card.i === i);
+  $: hasMatched = id =>
+    actives.reduce((acc, c) => (c.id === id ? acc + 1 : acc), 0) === 2;
+
+  const turn = async card => {
+    const pkmn = pkmns[card.id];
+    const name = pkmn.name.toUpperCase();
+    pkdex_text = "";
+
     cardTurns++;
-    actives = [item, ...actives];
+    actives = [card, ...actives];
 
-    if (actives.length % 2 === 0 && item.id !== actives[1].id) {
-      await delay(600);
-      actives = actives.slice(2, actives.length);
+    if (actives.length % 2 === 1) {
+      // one pkmn selected
+      action_sentence = `Wild ${card.shiny ? "shiny " : ""}${name} appeared!`;
+    } else {
+      // two pkmn selected
+      if (card.id !== actives[1].id) {
+        // not a catch
+        action_sentence = `${pkmns[actives[1].id].name.toUpperCase()} fled!`;
+        await delay(600);
+        actives = actives.slice(2, actives.length);
+        action_sentence = getRadomItem(quotes);
+      } else {
+        // a catch!
+        action_sentence = `All right! ${name} has caught! New pkdex data will be added for ${name}!`;
+        await delay(600);
+        pkdex_text = pkmn.flavor_text;
+      }
     }
 
     if (actives.length === cards.length) {
@@ -63,6 +106,10 @@
   onMount(async () => {
     const numbers = getPkmnNumbers();
     const items = await requester(numbers);
+
+    pkmns = items.reduce((acc, item) => ((acc[item.id] = item), acc), {});
+
+    console.log(pkmns);
 
     cards = duplicateAndRandomize(items);
 
@@ -126,28 +173,33 @@
   <header class="header">
     <h1>PkMn Memory Puzzle</h1>
     <p>
-      Complete: {hasStarted ? actives.length : 0}/{cards.length} | Turns: {cardTurns}
+      Catched: {hasStarted ? actives.length : 0}/{cards.length} | Attempts: {cardTurns}
     </p>
+    <p>
+      <strong>{action_sentence}</strong>
+    </p>
+    {#if pkdex_text}
+      <p>{pkdex_text}</p>
+    {/if}
   </header>
   <div class="cards">
-    {#each cards as { color, name, id, img }, i}
-      {#if actives.find(card => card.i === i)}
+    {#each cards as { color, name, id, img, shiny }, i}
+      {#if isActive(i)}
         <figure
-          class="card card-face {hasStarted && actives.reduce((acc, c) => (c.id === id ? acc + 1 : acc), 0) === 2 ? 'card-success' : ''}"
+          class="card card-face {hasStarted && hasMatched(id) ? 'card-success' : ''}"
           style="border-color: {color}">
           <img src={img} alt={name} />
           <figcaption>#{id} {name}</figcaption>
         </figure>
-      {:else}
+      {:else if hasStarted}
         <figure
           class="card card-back"
-          on:click|once={() => hasStarted && turn({ i, id })}>
-          pkmn
+          on:click|once={() => turn({ i, id, shiny })}>
+          Gotta catch 'em all!
         </figure>
+      {:else}
+        <figure class="card card-back">Gotta catch 'em all!</figure>
       {/if}
-    {:else}
-      <!-- this block renders when cards.length === 0 -->
-      <p>loading...</p>
     {/each}
   </div>
 </main>
