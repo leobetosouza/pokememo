@@ -2,7 +2,10 @@ import { getRadomItem } from "./utils";
 
 const BASE_URL = "https://pokeapi.co/api/v2";
 
-const ajax = async url => await fetch(url).then(res => res.json());
+const ajax = async url => {
+  console.log(`getting: ${url}`);
+  return fetch(url).then(res => res.json());
+};
 
 const getPkmnUrl = ({ varieties }) => getRadomItem(varieties).pokemon.url;
 const getFormUrl = ({ forms }) => getRadomItem(forms).url;
@@ -15,9 +18,12 @@ const getLanguageObject = ({ names }) =>
 const getName = (form, specie) =>
   (getLanguageObject(form) || getLanguageObject(specie)).name;
 
-const getFlavorText = ({ flavor_text_entries }) => {
+const getFlavorText = ({ flavor_text_entries, genera }) => {
+  const genus = genera.find(languageFilter).genus;
   const filtered_entries = flavor_text_entries.filter(languageFilter);
-  return getRadomItem(filtered_entries).flavor_text;
+  const flavor_text = getRadomItem(filtered_entries).flavor_text;
+
+  return `${genus}: ${flavor_text}`;
 };
 
 const arrayBufferToBase64 = buffer => {
@@ -56,23 +62,55 @@ const getImgs = async (form, pkmn) => {
   return { common: image };
 };
 
+const fetchTypes = async () => {
+  const types = await ajax(`${BASE_URL}/type/`);
+  const res = await Promise.all(types.results.map(({ url }) => ajax(url)));
+
+  return res.reduce(
+    (acc, { name, names }) => ({
+      ...acc,
+      [name]: names.find(languageFilter).name
+    }),
+    {}
+  );
+};
+
+const getType = (types, pkmn) =>
+  pkmn.types
+    .sort((a, b) => a.slot - b.slot)
+    .map(({ type }) => types[type.name])
+    .join("/");
+
+const getNationalNumber = ({ pokedex_numbers }) =>
+  pokedex_numbers.find(({ pokedex }) => pokedex.name === "national")
+    .entry_number;
+
 const requester = async numbers => {
+  const types = await fetchTypes();
+
   const promises = numbers.map(async n => {
     const specie = await ajax(`${BASE_URL}/pokemon-species/${n}/`);
-    let pkmn, form, imgs;
+    let pkmn,
+      form,
+      imgs,
+      count = 0;
 
     do {
       pkmn = await ajax(getPkmnUrl(specie));
       form = await ajax(getFormUrl(pkmn));
       imgs = await getImgs(form, pkmn);
-    } while (!imgs.common);
+      count++;
+    } while (!imgs.common && count < 5);
+
+    if (!imgs.common) throw new Error(`Fail to get pkmn#${n} image`);
 
     return {
-      id: n,
+      id: getNationalNumber(specie),
       color: specie.color.name,
       name: getName(form, specie),
       imgs,
-      flavor_text: getFlavorText(specie)
+      flavor_text: getFlavorText(specie),
+      type: getType(types, pkmn)
     };
   });
 

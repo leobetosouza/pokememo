@@ -50,8 +50,7 @@
     } while (--times);
   };
 
-  const getPkmnNumbers = () => {
-    const n = +prompt("How many pairs do you want? (min 2, max 20)");
+  const getPkmnNumbers = n => {
     return shuffle(
       Array.from(Array(NUMBER_OF_PKMN).keys(), (_, i) => i + 1)
     ).slice(0, Math.max(2, Math.min(n, 20)));
@@ -104,18 +103,27 @@
   };
 
   onMount(async () => {
-    const numbers = getPkmnNumbers();
-    const items = await requester(numbers);
+    const n = +prompt("How many pairs do you want? (min 2, max 20)");
+    let numbers, items;
+
+    while (true) {
+      try {
+        numbers = getPkmnNumbers(n);
+        items = await requester(numbers);
+        break;
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
     pkmns = items.reduce((acc, item) => ((acc[item.id] = item), acc), {});
-
-    console.log(pkmns);
-
     cards = duplicateAndRandomize(items);
+
+    const turnedCards = cards.map(({ id }, i) => ({ id, i }));
 
     await alternate_rallentandi(
       3,
-      () => (actives = cards.map(({ id }, i) => ({ id, i }))),
+      () => (actives = turnedCards),
       () => (actives = [])
     );
 
@@ -183,13 +191,13 @@
     {/if}
   </header>
   <div class="cards">
-    {#each cards as { color, name, id, img, shiny }, i}
+    {#each cards as { color, name, id, img, shiny, type }, i}
       {#if isActive(i)}
         <figure
           class="card card-face {hasStarted && hasMatched(id) ? 'card-success' : ''}"
           style="border-color: {color}">
           <img src={img} alt={name} />
-          <figcaption>#{id} {name}</figcaption>
+          <figcaption>#{id} {name} &middot; {type}</figcaption>
         </figure>
       {:else if hasStarted}
         <figure
