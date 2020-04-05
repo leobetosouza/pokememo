@@ -146,32 +146,126 @@
   }
 
   .cards {
-    background: #000;
+    background: yellowgreen;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-gap: 8px;
-  }
-
-  .card,
-  img {
-    width: 100%;
-    margin: 0;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    /* grid-template-rows: repeat(auto-fill, minmax(300px, 1.5fr)); */
+    grid-gap: 1em;
+    place-items: stretch stretch;
+    place-content: stretch stretch;
   }
 
   .card {
-    background: #ccc;
-    border: 3px solid;
-    height: 15vw;
-  }
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 15px;
 
+    transition: 0.4s;
+  }
+  .card-face,
+  .card-back {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    border-radius: 15px;
+  }
+  .card-face {
+    padding: 1em;
+    text-align: left;
+
+    display: flex;
+    flex-direction: column;
+
+    position: relative;
+
+    box-shadow: 0px 5px 20px -10px #3a1c71;
+  }
+  .card__blue {
+    background: linear-gradient(120deg, #1cb5e0 0%, #000851 100%);
+  }
+  .card__green {
+    background: linear-gradient(
+      140deg,
+      rgba(196, 218, 61, 1) 0%,
+      rgba(110, 127, 14, 1) 69%,
+      rgba(39, 80, 9, 1) 100%
+    );
+  }
+  .card__red {
+    background: linear-gradient(
+      0deg,
+      rgba(199, 24, 0, 1) 10%,
+      rgba(252, 194, 69, 1) 100%
+    );
+  }
+  .card__yellow {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 222, 0, 1) 34%,
+      rgba(232, 255, 153, 1) 83%
+    );
+  }
+  .card__pink {
+    background: linear-gradient(
+      140deg,
+      rgba(255, 167, 249, 1) 0%,
+      rgba(255, 44, 195, 1) 39%,
+      rgba(255, 227, 167, 1) 100%
+    );
+  }
+  .card__purple {
+    background-image: linear-gradient(315deg, #2b1331 0%, #b9abcf 74%);
+  }
+  .card__brown {
+    background: linear-gradient(110deg, #fdbb2d 0%, #3a1c71 100%);
+  }
+  .card__black {
+    background: linear-gradient(
+      20deg,
+      rgba(25, 25, 25, 1) 0%,
+      rgba(16, 11, 50, 1) 33%,
+      rgba(92, 2, 73, 1) 100%
+    );
+  }
+  .card__white {
+    background-image: linear-gradient(315deg, #ffffff 0%, #d7e1ec 74%);
+  }
+  .card__gray {
+    background-image: linear-gradient(315deg, #bdd4e7 0%, #8693ab 74%);
+  }
+  .card:hover {
+    box-shadow: 0px 13px 30px -15px #000000;
+  }
+  .card-data {
+    background-color: rgba(255, 255, 255, 0.65);
+    padding: 1em;
+    position: relative;
+    border-radius: 0 0 3px 3px;
+    height: 100%;
+  }
+  .card-image-container {
+    background-color: rgba(0, 0, 0, 0.7);
+    text-align: center;
+    padding: 1em 1em 0;
+    border-radius: 3px 3px 0 0;
+  }
+  img {
+    height: 150px;
+    margin: auto;
+    display: inline-block;
+  }
   .card-back {
     background: #fff;
-    border: 3px solid orange;
+    border: 1em solid orange;
+    border-radius: 15px;
   }
 
   .card-success {
-    background: orange;
+    /* background-color: #e7eff9;
+    background-image: linear-gradient(315deg, #e7eff9 0%, #cfd6e6 74%); */
   }
 </style>
 
@@ -192,22 +286,30 @@
   </header>
   <div class="cards">
     {#each cards as { color, name, id, img, shiny, type }, i}
-      {#if isActive(i)}
-        <figure
-          class="card card-face {hasStarted && hasMatched(id) ? 'card-success' : ''}"
-          style="border-color: {color}">
-          <img src={img} alt={name} />
-          <figcaption>#{id} {name} &middot; {type}</figcaption>
-        </figure>
-      {:else if hasStarted}
-        <figure
-          class="card card-back"
-          on:click|once={() => turn({ i, id, shiny })}>
-          Gotta catch 'em all!
-        </figure>
-      {:else}
-        <figure class="card card-back">Gotta catch 'em all!</figure>
-      {/if}
+      <div class="card">
+        {#if isActive(i)}
+          <figure
+            class="card-face card__{color}
+            {hasStarted && hasMatched(id) ? 'card-success' : ''}">
+            <header class="card-image-container">
+              <img src={img} alt={name} class="card-image" />
+            </header>
+            <figcaption class="card-data">
+              <h1 class="card-name">{name}</h1>
+              <strong class="card-number">#{id}</strong>
+              <strong class="card-type">{type}</strong>
+            </figcaption>
+          </figure>
+        {:else if hasStarted}
+          <figure
+            class="card-back"
+            on:click|once={() => turn({ i, id, shiny })}>
+            Gotta catch 'em all!
+          </figure>
+        {:else}
+          <figure class="card-back">Gotta catch 'em all!</figure>
+        {/if}
+      </div>
     {/each}
   </div>
 </main>
