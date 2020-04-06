@@ -238,13 +238,17 @@
   }
   .card:hover {
     box-shadow: 0px 13px 30px -15px #000000;
+    animation: bounce 0.5s linear;
   }
   .card-data {
     background-color: rgba(255, 255, 255, 0.65);
-    padding: 1em;
+    padding: 0.75em 0.75em 0;
     position: relative;
     border-radius: 0 0 3px 3px;
     height: 100%;
+  }
+  .card-name {
+    /* font-size: calc(12px + (24 - 12) * ((100vw - 400px) / (800 - 400))); */
   }
   .card-image-container {
     background-color: rgba(0, 0, 0, 0.7);
@@ -257,15 +261,34 @@
     margin: auto;
     display: inline-block;
   }
+  .card-name {
+    margin: 0;
+  }
   .card-back {
     background: #fff;
     border: 1em solid orange;
     border-radius: 15px;
+    cursor: pointer;
   }
 
   .card-success {
     /* background-color: #e7eff9;
     background-image: linear-gradient(315deg, #e7eff9 0%, #cfd6e6 74%); */
+  }
+
+  @keyframes bounce {
+    20% {
+      transform: translateY(-6px);
+    }
+    40% {
+      transform: translateY(0px);
+    }
+    60% {
+      transform: translateY(-2px);
+    }
+    80% {
+      transform: translateY(-0px);
+    }
   }
 </style>
 
