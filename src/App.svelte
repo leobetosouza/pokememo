@@ -28,12 +28,12 @@
       ...shuffle(array).map(item => ({
         ...item,
         img: item.imgs.shiny || item.imgs.common,
-        shiny: !!item.imgs.shiny
+        is_shiny: !!item.imgs.shiny
       })),
       ...shuffle(array).map(item => ({
         ...item,
         img: item.imgs.common,
-        shiny: false
+        is_shiny: false
       }))
     ]);
 
@@ -68,6 +68,9 @@
   $: isActive = i => actives.find(card => card.i === i);
   $: hasMatched = id =>
     actives.reduce((acc, c) => (c.id === id ? acc + 1 : acc), 0) === 2;
+
+  $: hasNameBadge = ({ is_mega, is_alolan_form, is_totem }) =>
+    is_mega || is_alolan_form || is_totem;
 
   const turn = async card => {
     const pkmn = pkmns[card.id];
@@ -255,6 +258,40 @@
     text-align: center;
     padding: 1em 1em 0;
     border-radius: 3px 3px 0 0;
+    position: relative;
+    overflow: hidden;
+    height: 130%;
+  }
+  .card-image-container img:after {
+    content: "";
+    clear: both;
+    display: block;
+  }
+  .card-image-container__shiny img {
+    animation: grow 4s infinite 0s;
+  }
+  .card-image-container__shiny:before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    z-index: 1;
+
+    width: 60%;
+    height: 100%;
+    opacity: 0;
+    animation: move 4s infinite 1s;
+
+    background-image: linear-gradient(
+      to left,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.03) 1%,
+      rgba(255, 255, 255, 0.6) 30%,
+      rgba(255, 255, 255, 0.85) 50%,
+      rgba(255, 255, 255, 0.85) 70%,
+      rgba(255, 255, 255, 0.85) 71%,
+      rgba(255, 255, 255, 0) 100%
+    );
   }
   img {
     height: 150px;
@@ -263,6 +300,11 @@
   }
   .card-name {
     margin: 0;
+  }
+  .card-name-badge {
+    display: block;
+    font-size: 50%;
+    font-style: italic;
   }
   .card-back {
     background: #fff;
@@ -290,6 +332,38 @@
       transform: translateY(-0px);
     }
   }
+  @keyframes move {
+    0% {
+      transform: skew(-25deg, 0deg) translateX(-120%);
+      opacity: 0.2;
+    }
+    15% {
+      opacity: 0.1;
+    }
+    48% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.2;
+    }
+    100% {
+      transform: skew(-25deg, 0deg) translateX(180%);
+      /* opacity: 0.2; */
+    }
+  }
+  @keyframes grow {
+    0% {
+      filter: brightness(1);
+    }
+
+    50% {
+      filter: brightness(0);
+    }
+
+    100% {
+      filter: brightness(1);
+    }
+  }
 </style>
 
 <main
@@ -308,19 +382,39 @@
     {/if}
   </header>
   <div class="cards">
-    {#each cards as { color, name, id, img, shiny, type }, i}
+    {#each cards as { color, name, id, img, shiny, types, is_mega, is_alolan_form, is_shiny, is_totem }, i}
       <div class="card">
         {#if isActive(i)}
           <figure
             class="card-face card__{color}
             {hasStarted && hasMatched(id) ? 'card-success' : ''}">
-            <header class="card-image-container">
+            <header
+              class="card-image-container {is_shiny ? 'card-image-container__shiny' : ''}">
               <img src={img} alt={name} class="card-image" />
             </header>
             <figcaption class="card-data">
-              <h1 class="card-name">{name}</h1>
+              <h1 class="card-name">
+                {#if hasNameBadge({ is_mega, is_alolan_form, is_totem })}
+                  <span class="card-name-badge">
+                    {#if is_mega}
+                      <span class="card-name-badge__mega">Mega</span>
+                    {/if}
+                    {#if is_totem}
+                      <span class="card-name-badge__totem">Totem</span>
+                    {/if}
+                    {#if is_alolan_form}
+                      <span class="card-name-badge__alola">Alolan</span>
+                    {/if}
+                  </span>
+                {/if}
+                {name}
+              </h1>
               <strong class="card-number">#{id}</strong>
-              <strong class="card-type">{type}</strong>
+              <strong class="card-type">
+                {#each types as type, i}
+                  {type}{i + 1 !== types.length ? '/' : ''}
+                {/each}
+              </strong>
             </figcaption>
           </figure>
         {:else if hasStarted}
