@@ -16,6 +16,7 @@
     "svelte": "^3.0.0"
   },
   "dependencies": {
+    "localforage": "^1.7.3",
     "sirv-cli": "^0.4.4"
   }
 }
