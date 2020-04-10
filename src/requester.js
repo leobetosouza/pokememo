@@ -1,94 +1,37 @@
-import localforage from "localforage";
-import { getRadomItem } from "./utils";
+import { TYPE_URL, SPECIE_URL } from "./constants";
+import { arrayBufferToBase64 } from "./utils";
+import { reportFrontSpriteError } from "./error";
 
-const BASE_URL = "https://pokeapi.co/api/v2";
+import {
+  languageFilter,
+  getName,
+  getPkmnUrl,
+  getFormUrl,
+  getNationalNumber,
+  getFlavorText,
+  getTypes,
+  isUltraBeast,
+} from "./common";
+import createCachedRequester from "./cache";
 
-const apicache = localforage.createInstance({
-  driver: localforage.INDEXEDDB,
-  name: "pokeapi-cache",
-  version: 1.0,
-  storeName: "apicache",
-  description: "Cache of PokeAPI responses",
-});
+const ajax = createCachedRequester("api", async (url) =>
+  fetch(url).then((res) => res.json())
+);
 
-const imgcache = localforage.createInstance({
-  driver: localforage.INDEXEDDB,
-  name: "pokeapi-images-cache",
-  version: 1.0,
-  storeName: "imgcache",
-  description: "Cache of PokeAPI images",
-});
-
-const ajax = async (url) => {
-  await apicache.ready();
-
-  const cached = await apicache.getItem(url);
-  if (cached) {
-    console.log(`from cache ${url}`, cached);
-    return cached;
-  }
-
-  console.log(`getting: ${url}`);
-  const data = await fetch(url).then((res) => res.json());
-
-  await apicache.setItem(url, { ...data, cached: true });
-  return data;
-};
-
-const arrayBufferToBase64 = (buffer) => {
-  const bytes = [...new Uint8Array(buffer)].reduce(
-    (acc, b) => acc + String.fromCharCode(b),
-    ""
-  );
-
-  return "data:image/jpeg;base64," + btoa(bytes);
-};
-
-const fetchImage = async (url) => {
-  await imgcache.ready();
-
-  const cached = await imgcache.getItem(url);
-  if (cached) {
-    console.log(`img from cache ${url}`, cached);
-    return cached.img;
-  }
-
-  console.log(`img getting: ${url}`);
-  const img = await fetch(url)
+const fetchImage = createCachedRequester("img", async (url) =>
+  fetch(url)
     .then((res) => res.arrayBuffer())
-    .then(arrayBufferToBase64);
-
-  await imgcache.setItem(url, { img, cached: true });
-  return img;
-};
-
-const getPkmnUrl = ({ varieties }) => getRadomItem(varieties).pokemon.url;
-const getFormUrl = ({ forms }) => getRadomItem(forms).url;
-
-const languageFilter = ({ language }) => language.name === "en";
-
-const getLanguageObject = ({ names }) =>
-  Object.values(names).find(languageFilter);
-
-const getName = (form, specie) =>
-  (getLanguageObject(form) || getLanguageObject(specie)).name
-    .split(" ")
-    .filter((w) => !["Mega", "Alolan", "Totem"].includes(w))
-    .join(" ");
-
-const getFlavorText = ({ flavor_text_entries, genera }) => {
-  const genus = genera.find(languageFilter).genus;
-  const filtered_entries = flavor_text_entries.filter(languageFilter);
-  const flavor_text = getRadomItem(filtered_entries).flavor_text;
-
-  return `${genus}: ${flavor_text}`;
-};
+    .then(arrayBufferToBase64)
+);
 
 const getImgs = async (form, pkmn) => {
   const default_sprite_url =
     form.sprites.front_default || pkmn.sprites.front_default;
 
-  if (!default_sprite_url) return {};
+  if (!default_sprite_url) {
+    reportFrontSpriteError(form, pkmn);
+    return {};
+  }
 
   const shiny_sprite_url = form.sprites.front_shiny || pkmn.sprites.front_shiny;
 
@@ -107,7 +50,7 @@ const getImgs = async (form, pkmn) => {
 };
 
 const fetchTypes = async () => {
-  const types = await ajax(`${BASE_URL}/type/`);
+  const types = await ajax(`${TYPE_URL}`);
   const res = await Promise.all(types.results.map(({ url }) => ajax(url)));
 
   return res.reduce(
@@ -119,30 +62,12 @@ const fetchTypes = async () => {
   );
 };
 
-const getTypes = (types, pkmn) =>
-  pkmn.types
-    .sort((a, b) => a.slot - b.slot)
-    .map(({ type }) => types[type.name]);
-
-const getNationalNumber = (specie, n) => {
-  const { pokedex_numbers } = specie;
-  try {
-    return pokedex_numbers.find(({ pokedex }) => pokedex.name === "national")
-      .entry_number;
-  } catch (e) {
-    console.error(e, specie);
-    return n;
-  }
-};
-
-const isUltraBeast = ({ abilities }) =>
-  abilities.some(({ ability }) => ability.name === "beast-boost");
-
 const requester = async (numbers) => {
   const types = await fetchTypes();
 
   const promises = numbers.map(async (n) => {
-    const specie = await ajax(`${BASE_URL}/pokemon-species/${n}/`);
+    const specie = await ajax(`${SPECIE_URL}${n}/`);
+
     let pkmn,
       form,
       imgs,

@@ -100,6 +100,12 @@
     }
 
     if (actives.length === cards.length) {
+      gtag("event", "finished_game", {
+        event_category: "engagement",
+        event_label: "Number of turns",
+        value: cardTurns
+      });
+
       alert(`PARABAINS! You did it in ${cardTurns} card turns!`);
       hasFinished = true;
     }
@@ -108,6 +114,11 @@
   onMount(async () => {
     const n = +prompt("How many pairs do you want? (min 2, max 20)");
     let numbers, items;
+
+    gtag("event", "start_game", {
+      event_category: "engagement",
+      value: n
+    });
 
     while (true) {
       try {
@@ -137,6 +148,10 @@
 <style>
   * {
     box-sizing: border-box;
+  }
+
+  body {
+    padding: 0;
   }
 
   .main {
@@ -419,6 +434,7 @@
           </figure>
         {:else if hasStarted}
           <figure
+            tabindex="0"
             class="card-back"
             on:click|once={() => turn({ i, id, shiny })}>
             Gotta catch 'em all!
