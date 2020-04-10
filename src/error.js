@@ -25,7 +25,7 @@ export const reportNationalNumberError = async (
   } catch (e) {}
 };
 
-export const reportFrontSpriteError = async (pkmn, form) => {
+export const reportFrontSpriteError = async (form, pkmn) => {
   try {
     const url = new URL(ERROR_URL);
 
